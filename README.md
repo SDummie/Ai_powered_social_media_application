@@ -1,4 +1,4 @@
-#AI Powered Social Media Application
+# AI Powered Social Media Application
 
 ## Overview
 
