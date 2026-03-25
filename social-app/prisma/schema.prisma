@@ -1,0 +1,283 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../node_modules/.prisma/client"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum FollowStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum NotificationType {
+  FOLLOW
+  FOLLOW_REQUEST
+  LIKE
+  COMMENT
+  MENTION
+  STORY_VIEW
+  MESSAGE
+}
+
+model User {
+  id               String    @id @default(cuid())
+  username         String    @unique
+  email            String    @unique
+  emailVerified    DateTime?
+  passwordHash     String?
+  name             String?
+  bio              String?
+  website          String?
+  location         String?
+  avatarUrl        String?
+  isPrivate        Boolean   @default(false)
+  isVerified       Boolean   @default(false)
+  role             Role      @default(USER)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  posts            Post[]
+  stories          Story[]
+  reels            Reel[]
+  comments         Comment[]
+  likes            Like[]
+  bookmarks        Bookmark[]
+  followers        Follow[]  @relation("following")
+  following        Follow[]  @relation("follower")
+  sentMessages     Message[] @relation("sender")
+  receivedMessages Message[] @relation("receiver")
+  notifications    Notification[]
+  accounts         Account[]
+  sessions         Session[]
+}
+
+model Post {
+  id            String    @id @default(cuid())
+  caption       String?
+  location      String?
+  isAiGenerated Boolean   @default(false)
+
+  // Content moderation (AI safety checks)
+  isFlagged     Boolean   @default(false)
+  flagReason    String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media         PostMedia[]
+  hashtags      PostHashtag[]
+  comments      Comment[]
+  likes         Like[]
+  bookmarks     Bookmark[]
+}
+
+model PostMedia {
+  id      String    @id @default(cuid())
+  url     String
+  type    MediaType
+  order   Int
+  postId  String
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Story {
+  id           String   @id @default(cuid())
+  mediaUrl     String
+  mediaType    MediaType
+  textOverlay  String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views        StoryView[]
+}
+
+model StoryView {
+  id        String   @id @default(cuid())
+  storyId   String
+  viewerId  String
+  createdAt DateTime @default(now())
+
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+}
+
+model Reel {
+  id         String   @id @default(cuid())
+  videoUrl   String
+  caption    String?
+  duration   Int
+  createdAt  DateTime @default(now())
+
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments   Comment[]
+  likes      Like[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  postId     String?
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reelId     String?
+  reel       Reel?    @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  parentId  String?
+  parent    Comment? @relation("replies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("replies")
+
+  likes     Like[]
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  reelId    String?
+  reel      Reel?    @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@unique([userId, reelId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+
+  followerId  String
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+
+  followingId String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  status      FollowStatus @default(ACCEPTED)
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model Hashtag {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  posts PostHashtag[]
+}
+
+model PostHashtag {
+  postId    String
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtagId String
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  text       String?
+  mediaUrl   String?
+
+  senderId   String
+  sender     User     @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  receiverId String
+  receiver   User     @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  seenAt     DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  message   String
+  isRead    Boolean          @default(false)
+
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  actorId   String?
+  postId    String?
+  createdAt DateTime         @default(now())
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
