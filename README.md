@@ -41,13 +41,13 @@ Wev_dev_cursor_prj/
 ### Clone the repository
 
 ```
-git clone https://github.com/SDummie/Wev_dev_cursor_prj.git
+git clone https://github.com/SDummie/Ai_powered_social_media_application.git
 ```
 
 ### Navigate to the project
 
 ```
-cd Wev_dev_cursor_prj
+cd Ai_powered_social_media_application
 ```
 
 ### Open in editor
@@ -78,8 +78,8 @@ code .
 
 ## Author
 
-Sahiba Rajput
-B.Tech Computer Science and Engineering
+Gautam Rajput
+
 
 ---
 
