@@ -1,4 +1,4 @@
-# Web Dev Cursor Project
+#AI Powered Social Media Application
 
 ## Overview
 
